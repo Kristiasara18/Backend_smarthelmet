@@ -5,6 +5,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
 include "../koneksi.php";
+require_once '../phpMQTT.php';
 
 // Ambil data JSON dari request
 $data = json_decode(file_get_contents("php://input"), true);
@@ -33,6 +34,26 @@ if ($ok) {
         "status" => "error",
         "message" => "Database error"
     ]);
+}
+
+$mqtt = new phpMQTT($server, $port, $client_id);
+
+if ($mqtt->connect(true, NULL, $username, $password)) {
+
+    $topic = "helmet/incident";
+
+    $payload = json_encode([
+        "device_id" => $device_id,
+        "id_pekerja" => $id_pekerja,
+        "lokasi" => $lokasi,
+        "status" => $status,
+        "catatan" => $catatan,
+        "waktu" => date("Y-m-d H:i:s"),
+        "incident_id" => $incident_id
+    ]);
+
+    $mqtt->publish($topic, $payload, 0);
+    $mqtt->close();
 }
 
 $conn->close();

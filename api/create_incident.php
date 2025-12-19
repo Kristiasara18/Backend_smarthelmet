@@ -7,7 +7,14 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
+require_once '../phpMQTT.php';
 include '../koneksi.php';
+
+$server = "test.mosquitto.org";   // broker
+$port = 1883;                     // non-TLS port
+$username = "";                   // isi jika broker butuh user
+$password = "";
+$client_id = "backend_publisher_" . uniqid();
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -84,6 +91,26 @@ if ($res->num_rows > 0) {
 
 // --- Ambil data final untuk response ---
 $result = $conn->query("SELECT * FROM kejadian WHERE id = $incident_id")->fetch_assoc();
+
+$mqtt = new phpMQTT($server, $port, $client_id);
+
+if ($mqtt->connect(true, NULL, $username, $password)) {
+
+    $topic = "helmet/incident";
+
+    $payload = json_encode([
+        "device_id" => $device_id,
+        "id_pekerja" => $id_pekerja,
+        "lokasi" => $lokasi,
+        "status" => $status,
+        "catatan" => $catatan,
+        "waktu" => date("Y-m-d H:i:s"),
+        "incident_id" => $incident_id
+    ]);
+
+    $mqtt->publish($topic, $payload, 0);
+    $mqtt->close();
+}
 
 echo json_encode([
     "status" => "success",

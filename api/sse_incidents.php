@@ -7,6 +7,7 @@ header('Cache-Control: no-cache');
 header('Connection: keep-alive');
 
 include "../koneksi.php";
+require_once '../phpMQTT.php';
 
 // Helper kirim SSE
 function sendSSE($id, $data) {
@@ -48,6 +49,26 @@ while (true) {
     }
 
     sleep(1);
+}
+
+$mqtt = new phpMQTT($server, $port, $client_id);
+
+if ($mqtt->connect(true, NULL, $username, $password)) {
+
+    $topic = "helmet/incident";
+
+    $payload = json_encode([
+        "device_id" => $device_id,
+        "id_pekerja" => $id_pekerja,
+        "lokasi" => $lokasi,
+        "status" => $status,
+        "catatan" => $catatan,
+        "waktu" => date("Y-m-d H:i:s"),
+        "incident_id" => $incident_id
+    ]);
+
+    $mqtt->publish($topic, $payload, 0);
+    $mqtt->close();
 }
 
 $conn->close();

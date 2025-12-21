@@ -1,5 +1,5 @@
 <?php
-require('../koneksi.php');
+require_once __DIR__ . '/../lib/koneksi.php';
 
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");

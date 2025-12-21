@@ -7,8 +7,8 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-require_once '../phpMQTT.php';
-include '../koneksi.php';
+require_once __DIR__ . '/../lib/koneksi.php';
+require_once __DIR__ . '/../lib/phpMQTT.php';
 
 $server = "test.mosquitto.org";   // broker
 $port = 1883;                     // non-TLS port

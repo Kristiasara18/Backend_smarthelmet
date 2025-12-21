@@ -1,61 +1,68 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json");
 
-include "../koneksi.php";
+require_once __DIR__ . '/../lib/koneksi.php';
 
-// 🟢 Tambahkan debug ini PERSIS DI SINI
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-  echo json_encode([
-    "status" => "error",
-    "message" => "Gunakan metode POST, bukan GET",
-    "method" => $_SERVER['REQUEST_METHOD']
-  ]);
-  exit;
-}
-
-// 🟢 Handle preflight (penting untuk React)
+// ✅ HANDLE PREFLIGHT DULU
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   http_response_code(200);
   exit;
 }
 
-// 🟢 Baca raw input JSON
-$raw = file_get_contents("php://input");
-$input = json_decode($raw, true);
-
-// 🧠 Debug fallback — kirim ke frontend biar kita tahu apa yang diterima
-if (!$input) {
+// ❌ BLOK GET
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
   echo json_encode([
     "status" => "error",
-    "message" => "Data tidak lengkap",
-    "debug_raw" => $raw,
-    "debug_server" => $_SERVER,
+    "message" => "Gunakan metode POST",
+    "method" => $_SERVER['REQUEST_METHOD']
   ]);
   exit;
 }
 
-$email = $input['email'] ?? '';
-$password = $input['password'] ?? '';
+// ✅ BACA JSON
+$raw = file_get_contents("php://input");
+$input = json_decode($raw, true);
 
-if ($email && $password) {
-  $email_safe = mysqli_real_escape_string($conn, $email);
-  $pass_safe = mysqli_real_escape_string($conn, $password);
+if (!$input) {
+  echo json_encode([
+    "status" => "error",
+    "message" => "JSON tidak terbaca",
+    "raw" => $raw
+  ]);
+  exit;
+}
 
-  $query = mysqli_query($conn, "SELECT * FROM user_login WHERE email='$email_safe' AND password='$pass_safe'");
-  if (mysqli_num_rows($query) > 0) {
-    $user = mysqli_fetch_assoc($query);
-    echo json_encode(["status" => "success", "user" => $user]);
-  } else {
-    echo json_encode(["status" => "error", "message" => "Email atau password salah!"]);
-  }
+$email = trim($input['email'] ?? '');
+$password = trim($input['password'] ?? '');
+
+if ($email === '' || $password === '') {
+  echo json_encode([
+    "status" => "error",
+    "message" => "Email dan password wajib diisi"
+  ]);
+  exit;
+}
+
+$email_safe = mysqli_real_escape_string($conn, $email);
+$password_safe = mysqli_real_escape_string($conn, $password);
+
+$query = mysqli_query(
+  $conn,
+  "SELECT id, name, email FROM user_login 
+   WHERE email='$email_safe' AND password='$password_safe'"
+);
+
+if (mysqli_num_rows($query) > 0) {
+  echo json_encode([
+    "status" => "success",
+    "user" => mysqli_fetch_assoc($query)
+  ]);
 } else {
   echo json_encode([
     "status" => "error",
-    "message" => "Data tidak lengkap (tidak terbaca email/password)",
-    "debug" => $input,
+    "message" => "Email atau password salah"
   ]);
 }
-?>

@@ -6,8 +6,8 @@ header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
 
-include "../koneksi.php";
-require_once '../phpMQTT.php';
+require_once __DIR__ . '/../lib/koneksi.php';
+require_once __DIR__ . '/../lib/phpMQTT.php';
 
 // Helper kirim SSE
 function sendSSE($id, $data) {

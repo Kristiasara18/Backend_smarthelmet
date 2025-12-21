@@ -1,69 +1,83 @@
 <?php
-require("phpMQTT.php");
-require("koneksi.php");
+require_once __DIR__ . '/lib/koneksi.php';      // Koneksi ke MySQL
+require_once __DIR__ . '/lib/phpMQTT.php';      // phpMQTT klasik
 
-// Konfigurasi broker MQTT (bisa disesuaikan)
-$server   = "test.mosquitto.org";   // broker MQTT
-$port     = 1883;                   // port MQTT non-TLS
-$username = "";                     // kosong jika tidak pakai auth
-$password = "";
-$clientID = "SmartHelmetSubskriber_".uniqid();
+use Bluerhinos\phpMQTT;
 
-// Topik IoT
-$topic = "smarthelmet/data";
+// -------------------- MQTT CONFIG --------------------
+$server   = "test.mosquitto.org";
+$port     = 1883;
 
-// Membuat instance MQTT
+// Generate clientID unik
+$clientID = "SmartHelmetSub_" . uniqid();
+
+// -------------------- CREATE MQTT CLIENT --------------------
 $mqtt = new phpMQTT($server, $port, $clientID);
 
-if(!$mqtt->connect(true, NULL, $username, $password)){
-    die("⚠ Gagal terhubung ke MQTT broker...");
+if(!$mqtt->connect(true, NULL, "", "")){
+    die("Gagal konek MQTT\n");
 }
 
-// Callback saat pesan diterima
-$mqtt->subscribe([$topic => ["qos" => 0, "function" => "handleMessage"]]);
+echo "Subscriber MQTT aktif, menunggu data...\n";
 
-while($mqtt->proc()){
-    // loop agar subscriber tetap hidup
+// -------------------- AMBIL DAFTAR TOPIC DARI USERS --------------------
+$users = [];
+$result = $conn->query("SELECT id, device_topic FROM users");
+while($row = $result->fetch_assoc()){
+    $users[$row['device_topic']] = $row['id']; // mapping topic ke user_id
 }
 
+// -------------------- SUBSCRIBE --------------------
+$topics = [];
+foreach(array_keys($users) as $topic){
+    $topics[$topic] = ["qos" => 0, "function" => "handleMessage"];
+}
+
+$mqtt->subscribe($topics);
+
+// -------------------- LOOP --------------------
+while($mqtt->proc()){}
+
+// -------------------- CLOSE CONNECTION --------------------
 $mqtt->close();
 
-
-// =========================
-// Handler pesan dari IoT
-// =========================
+// -------------------- CALLBACK FUNCTION --------------------
 function handleMessage($topic, $msg){
-    global $conn;
+    global $conn, $users;
 
-    echo "Pesan diterima dari IoT:\n";
-    echo "Topic: $topic\n";
-    echo "Payload: $msg\n\n";
-
-    // IoT biasanya kirim JSON, misalnya:
-    // {"status":"normal", "ax":123, "ay":456, ...}
-
-    $data = json_decode($msg, true);
-
-    if($data === null){
-        echo "❌ ERROR: payload bukan JSON\n";
+    // Cek user_id dari topic
+    $user_id = $users[$topic] ?? null;
+    if(!$user_id){
+        echo "Topic $topic tidak terdaftar di users\n";
         return;
     }
 
-    // --- contoh simpan ke database ---
-    // Sesuaikan dengan tabel kamu
+    // LOG FILE
+    file_put_contents(
+        __DIR__ . "/mqtt_log.txt",
+        date("Y-m-d H:i:s") . " | Topic: $topic | $msg" . PHP_EOL,
+        FILE_APPEND
+    );
+
+    $data = json_decode($msg, true);
+    if(!$data){
+        echo "JSON error dari topic $topic\n";
+        return;
+    }
 
     $status = $data["status"] ?? null;
-    $ax     = $data["mpu"]["ax"] ?? null;
-    $ay     = $data["mpu"]["ay"] ?? null;
-    $az     = $data["mpu"]["az"] ?? null;
+    $ax = $data["mpu"]["ax"] ?? null;
+    $ay = $data["mpu"]["ay"] ?? null;
+    $az = $data["mpu"]["az"] ?? null;
 
-    $sql = "INSERT INTO kejadian_helmet (status, ax, ay, az) 
-            VALUES ('$status', '$ax', '$ay', '$az')";
+    $stmt = $conn->prepare(
+        "INSERT INTO kejadian(user_id, status, ax, ay, az) VALUES (?, ?, ?, ?, ?)"
+    );
+    $stmt->bind_param("isiii", $user_id, $status, $ax, $ay, $az);
 
-    if ($conn->query($sql)) {
-        echo "✔ Data berhasil disimpan ke database\n";
+    if($stmt->execute()){
+        echo "Data masuk DB untuk user_id $user_id\n";
     } else {
-        echo "❌ Gagal simpan data: " . $conn->error . "\n";
+        echo "DB error: " . $stmt->error . "\n";
     }
 }
-?>

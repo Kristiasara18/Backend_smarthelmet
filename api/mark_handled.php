@@ -4,8 +4,8 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
-include "../koneksi.php";
-require_once '../phpMQTT.php';
+require_once __DIR__ . '/../lib/koneksi.php';
+require_once __DIR__ . '/../lib/phpMQTT.php';
 
 // Ambil data JSON dari request
 $data = json_decode(file_get_contents("php://input"), true);

@@ -1,5 +1,5 @@
 <?php
-include "../koneksi.php";
+require_once __DIR__ . '/../lib/koneksi.php';
 require_once '../phpMQTT.php';
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");

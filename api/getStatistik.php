@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 header("Access-Control-Allow-Origin: *");
 
-$koneksi = new mysqli("localhost", "root", "", "db_karyawan");
+require_once __DIR__ . '/../lib/koneksi.php';
 if ($koneksi->connect_error) {
     die(json_encode(["error" => "Koneksi gagal: " . $koneksi->connect_error]));
 }

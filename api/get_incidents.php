@@ -1,7 +1,9 @@
 <?php
 header("Content-Type: application/json");
 require_once "../config/database.php";
-require_once '../phpMQTT.php';
+require_once __DIR__ . '/../lib/koneksi.php';
+require_once __DIR__ . '/../lib/phpMQTT.php';
+
 
 $query = "SELECT * FROM incidents ORDER BY time DESC";
 $result = mysqli_query($conn, $query);

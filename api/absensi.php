@@ -1,28 +1,22 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
-include "../koneksi.php";
+require_once __DIR__ . '/../lib/koneksi.php';
 
 date_default_timezone_set("Asia/Jakarta");
 $today = date("Y-m-d");
 
-// Cek absensi hari ini
-$check = $conn->query("SELECT COUNT(*) AS count FROM absensi WHERE tanggal = '$today'");
-$row = $check->fetch_assoc();
-
 if ($row["count"] == 0) {
-
     $karyawan = $conn->query("SELECT id_pekerja FROM karyawan");
+$values = [];
+while ($k = $karyawan->fetch_assoc()) {
+    $values[] = "('$today', '{$k['id_pekerja']}', 'Tidak Hadir')";
+}
 
-    $values = [];
-    while ($k = $karyawan->fetch_assoc()) {
-        $values[] = "('$today', '{$k["id_pekerja"]}', 'Tidak Hadir')";
-    }
-
-    if (!empty($values)) {
-        $insertSQL = "INSERT INTO absensi (tanggal, id_pekerja, kehadiran) VALUES " . implode(",", $values);
-        $conn->query($insertSQL);
-    }
+if (!empty($values)) {
+    $insertSQL = "INSERT IGNORE INTO absensi (tanggal, id_pekerja, kehadiran) VALUES " . implode(",", $values);
+    $conn->query($insertSQL);
+}
 }
 
 // Ambil absensi 7 hari terakhir
@@ -42,4 +36,5 @@ while ($row = $result->fetch_assoc()) {
 }
 
 echo json_encode($data);
+$conn->close();
 ?>

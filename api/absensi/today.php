@@ -1,7 +1,7 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
-include "../../koneksi.php";
+require_once __DIR__ . '/../../lib/koneksi.php';
 
 date_default_timezone_set("Asia/Jakarta");
 $today = date("Y-m-d");

@@ -7,7 +7,7 @@ header("Content-Type: text/event-stream");
 header("Cache-Control: no-cache");
 header("Connection: keep-alive");
 
-include "../koneksi.php";
+require_once __DIR__ . '/../lib/koneksi.php';
 
 function sendSSE($data) {
     echo "data: " . json_encode($data) . "\n\n";

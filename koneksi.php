@@ -1,12 +1,12 @@
 <?php
-$host = "localhost";
-$user = "root";        // sesuaikan
-$pass = "";            // isi jika MySQL kamu pakai password
+$host = "127.0.0.1";
+$user = "appuser";
+$pass = "app123";
 $db   = "db_karyawan";
+$port = 3306;
 
-$conn = new mysqli($host, $user, $pass, $db);
+$conn = mysqli_connect($host, $user, $pass, $db, $port);
 
-if ($conn->connect_error) {
-    die(json_encode(["status" => "error", "message" => "Koneksi gagal: " . $conn->connect_error]));
+if (!$conn) {
+    die("Koneksi DB gagal: " . mysqli_connect_error());
 }
-?>

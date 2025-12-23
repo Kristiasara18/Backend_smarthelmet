@@ -1,75 +1,72 @@
 <?php
-set_time_limit(0);
-ignore_user_abort(true);
+require_once __DIR__ . '/../lib/koneksi.php';
 
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('Connection: keep-alive');
+header('Access-Control-Allow-Origin: *');
+header('X-Accel-Buffering: no');
 
-require_once __DIR__ . '/../lib/koneksi.php';
-require_once __DIR__ . '/../lib/phpMQTT.php';
-
-// Helper kirim SSE
-function sendSSE($id, $data) {
-    echo "id: {$id}\n";
-    echo "data: {$data}\n\n";
-    @ob_flush();
-    @flush();
+@ini_set('output_buffering', 'off');
+@ini_set('zlib.output_compression', false);
+while (ob_get_level() > 0) {
+    ob_end_flush();
 }
+ob_implicit_flush(true);
 
-// Ambil last_id awal dari tabel `kejadian`
-$last_id = 0;
-$res = $conn->query("SELECT MAX(id) AS mx FROM kejadian");
-if ($res) {
-    $r = $res->fetch_assoc();
-    $last_id = intval($r['mx']);
-}
+set_time_limit(0);
+date_default_timezone_set("Asia/Jakarta");
 
-// Loop memantau perubahan database
+// Simpan ID terakhir yang sudah dikirim
+$lastSentId = 0;
+
 while (true) {
+    echo ": ping\n\n";
+    flush();
 
-    if (connection_aborted()) break;
-
+    // Ambil 1 insiden terbaru yang belum handled & aktif
     $stmt = $conn->prepare("
-        SELECT *
-        FROM kejadian
-        WHERE id > ? 
-          AND handled = 0
-          AND aktif = 1
-        ORDER BY id ASC
+        SELECT 
+            k.id,
+            k.waktu,
+            k.status,
+            k.lokasi,
+            k.catatan,
+            k.id_pekerja,
+            p.nama AS nama_pekerja,
+            p.kode_helmet
+        FROM kejadian k
+        JOIN karyawan p ON k.id_pekerja = p.id_pekerja
+        WHERE k.handled = 0
+          AND k.aktif = 1
+          AND k.status = 'SOS'
+          AND k.id > ?
+        ORDER BY k.id ASC
+        LIMIT 1
     ");
-    $stmt->bind_param("i", $last_id);
+    $stmt->bind_param("i", $lastSentId);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Jika ada data baru → kirim SSE
-    while ($row = $result->fetch_assoc()) {
-        $last_id = intval($row['id']);
-        sendSSE($last_id, json_encode($row));
+    if ($row = $result->fetch_assoc()) {
+
+        $lastSentId = (int)$row['id'];
+
+        echo "id: {$row['id']}\n";
+        echo "data: " . json_encode([
+            "id"            => $row['id'],
+            "nama_pekerja"  => $row['nama_pekerja'],
+            "kode_helmet"   => $row['kode_helmet'],
+            "status"        => $row['status'],
+            "waktu"         => $row['waktu'],
+            "lokasi"        => $row['lokasi'],
+            "catatan"       => $row['catatan'],
+        ]) . "\n\n";
+
+        ob_flush();
+        flush();
     }
 
+    // Jeda kecil agar tidak membebani server
     sleep(1);
 }
-
-$mqtt = new phpMQTT($server, $port, $client_id);
-
-if ($mqtt->connect(true, NULL, $username, $password)) {
-
-    $topic = "helmet/incident";
-
-    $payload = json_encode([
-        "device_id" => $device_id,
-        "id_pekerja" => $id_pekerja,
-        "lokasi" => $lokasi,
-        "status" => $status,
-        "catatan" => $catatan,
-        "waktu" => date("Y-m-d H:i:s"),
-        "incident_id" => $incident_id
-    ]);
-
-    $mqtt->publish($topic, $payload, 0);
-    $mqtt->close();
-}
-
-$conn->close();
-?>

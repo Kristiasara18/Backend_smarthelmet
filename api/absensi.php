@@ -6,15 +6,23 @@ require_once __DIR__ . '/../lib/koneksi.php';
 date_default_timezone_set("Asia/Jakarta");
 $today = date("Y-m-d");
 
+
 if ($row["count"] == 0) {
-    $karyawan = $conn->query("SELECT id_pekerja FROM karyawan");
+
+    // Cek absensi hari ini per karyawan
+$karyawan = $conn->query("SELECT id_pekerja FROM karyawan");
 $values = [];
 while ($k = $karyawan->fetch_assoc()) {
-    $values[] = "('$today', '{$k['id_pekerja']}', 'Tidak Hadir')";
+    $id_pekerja = $k['id_pekerja'];
+    $check_today = $conn->query("SELECT COUNT(*) AS c FROM absensi WHERE tanggal='$today' AND id_pekerja='$id_pekerja'");
+    $r = $check_today->fetch_assoc();
+    if ($r['c'] == 0) {
+        $values[] = "('$today', '$id_pekerja', 'Tidak Hadir')";
+    }
 }
 
 if (!empty($values)) {
-    $insertSQL = "INSERT IGNORE INTO absensi (tanggal, id_pekerja, kehadiran) VALUES " . implode(",", $values);
+    $insertSQL = "INSERT INTO absensi (tanggal, id_pekerja, kehadiran) VALUES " . implode(",", $values);
     $conn->query($insertSQL);
 }
 }
@@ -36,5 +44,4 @@ while ($row = $result->fetch_assoc()) {
 }
 
 echo json_encode($data);
-$conn->close();
 ?>

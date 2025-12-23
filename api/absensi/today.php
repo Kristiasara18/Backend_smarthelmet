@@ -6,9 +6,6 @@ require_once __DIR__ . '/../../lib/koneksi.php';
 date_default_timezone_set("Asia/Jakarta");
 $today = date("Y-m-d");
 
-// Periksa apakah absensi hari ini sudah ada
-$check = $conn->query("SELECT COUNT(*) AS count FROM absensi WHERE tanggal = '$today'");
-$row = $check->fetch_assoc();
 
 if ($row["count"] == 0) {
     // Insert otomatis untuk semua karyawan

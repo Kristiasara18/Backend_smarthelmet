@@ -28,7 +28,9 @@ if (!$id || !$kehadiran) {
 $id_safe = mysqli_real_escape_string($conn, $id);
 $kehadiran_safe = mysqli_real_escape_string($conn, $kehadiran);
 
-$query = "UPDATE absensi SET kehadiran='$kehadiran_safe' WHERE id_absensi='$id_safe'";
+$query = "UPDATE absensi 
+SET kehadiran='$kehadiran_safe', is_manual=1
+WHERE id_absensi='$id_safe'";
 
 if ($conn->query($query)) {
     echo json_encode([
